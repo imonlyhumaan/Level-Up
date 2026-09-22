@@ -1,0 +1,1392 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>LevelUp Life - Gamified Productivity RPG</title>
+  
+  <!-- iOS PWA Capable Meta Tags -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="LevelUp Life">
+  <meta name="theme-color" content="#0b0f19">
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <!-- Canvas Confetti -->
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            rpgBg: '#0b0f19',
+            rpgCard: '#151c2c',
+            rpgBorder: '#232f48',
+            neonGreen: '#10b981',
+            neonPurple: '#a855f7',
+            neonCyan: '#06b6d4',
+            neonGold: '#f59e0b',
+            neonRed: '#ef4444',
+            neonRose: '#f43f5e'
+          },
+          fontFamily: {
+            sans: ['Inter', 'system-ui', 'sans-serif'],
+          },
+          boxShadow: {
+            'glow-green': '0 0 15px rgba(16, 185, 129, 0.4)',
+            'glow-purple': '0 0 15px rgba(168, 85, 247, 0.4)',
+            'glow-gold': '0 0 15px rgba(245, 158, 11, 0.4)',
+            'glow-cyan': '0 0 15px rgba(6, 182, 212, 0.4)',
+            'glow-rose': '0 0 15px rgba(244, 63, 94, 0.4)',
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: #0b0f19; }
+    ::-webkit-scrollbar-thumb { background: #232f48; border-radius: 4px; }
+
+    /* Floating XP Text Animation */
+    @keyframes floatUp {
+      0% { opacity: 1; transform: translateY(0) scale(1); }
+      50% { opacity: 1; transform: translateY(-30px) scale(1.2); }
+      100% { opacity: 0; transform: translateY(-60px) scale(0.8); }
+    }
+    .float-xp {
+      position: absolute;
+      animation: floatUp 1.2s ease-out forwards;
+      pointer-events: none;
+      font-weight: 900;
+      z-index: 50;
+      text-shadow: 0 0 10px rgba(0,0,0,0.9);
+    }
+
+    /* Pulsing Glow Effect */
+    @keyframes pulseGlow {
+      0%, 100% { box-shadow: 0 0 10px rgba(168, 85, 247, 0.3); }
+      50% { box-shadow: 0 0 25px rgba(168, 85, 247, 0.7); }
+    }
+    .pulse-glow { animation: pulseGlow 2s infinite; }
+  </style>
+</head>
+<body class="bg-rpgBg text-slate-100 min-h-screen flex flex-col font-sans antialiased selection:bg-neonPurple selection:text-white pb-20 md:pb-6">
+
+  <header class="bg-rpgCard/80 backdrop-blur-md border-b border-rpgBorder sticky top-0 z-40 px-4 py-3">
+    <div class="max-w-5xl mx-auto flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-neonPurple to-indigo-600 flex items-center justify-center text-white shadow-glow-purple text-xl font-bold">
+          <i class="fa-solid fa-gamepad"></i>
+        </div>
+        <div>
+          <h1 class="font-extrabold text-lg tracking-wide text-transparent bg-clip-text bg-gradient-to-r from-teal-300 via-cyan-400 to-neonPurple">
+            LevelUp Life
+          </h1>
+          <p class="text-xs text-slate-400 font-medium">100-Level RPG Task Engine</p>
+        </div>
+      </div>
+
+      <!-- Streak & Actions -->
+      <div class="flex items-center gap-2 sm:gap-3">
+        <div class="flex items-center gap-1.5 px-3 py-1.5 bg-rpgBg rounded-lg border border-rpgBorder text-xs font-semibold text-neonGold" title="Daily Streak">
+          <i class="fa-solid fa-fire text-amber-500 animate-pulse"></i>
+          <span id="streakCount">1 Day Streak</span>
+        </div>
+        <button id="openLibraryBtn" class="px-3 py-1.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white rounded-lg text-xs font-bold shadow-glow-purple transition-all flex items-center gap-1.5">
+          <i class="fa-solid fa-book-bookmark"></i> <span class="hidden sm:inline">Quest Library</span>
+        </button>
+        <button id="resetDataBtn" class="p-2 text-slate-400 hover:text-red-400 transition-colors text-sm" title="Reset All Game Data">
+          <i class="fa-solid fa-rotate-right"></i>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-5xl mx-auto w-full px-4 pt-6 flex-1 space-y-6">
+
+    <!-- CHARACTER DASHBOARD CARD -->
+    <section class="bg-rpgCard border border-rpgBorder rounded-2xl p-5 shadow-xl relative overflow-hidden">
+      <div class="absolute -right-16 -top-16 w-48 h-48 bg-neonPurple/10 rounded-full blur-3xl pointer-events-none"></div>
+      
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6 items-center">
+        
+        <!-- Left: Avatar & Rank Title -->
+        <div class="flex items-center gap-4 border-b md:border-b-0 md:border-r border-rpgBorder/60 pb-4 md:pb-0 md:pr-4">
+          <div class="relative">
+            <div id="avatarBg" class="w-20 h-20 rounded-2xl bg-gradient-to-tr from-indigo-900 via-purple-800 to-slate-900 border-2 border-neonPurple flex items-center justify-center text-3xl text-slate-200 shadow-glow-purple">
+              <i id="avatarIcon" class="fa-solid fa-user-ninja"></i>
+            </div>
+            <span id="playerLevelBadge" class="absolute -bottom-2 -right-2 bg-gradient-to-r from-amber-500 to-neonGold text-black font-black text-xs px-2.5 py-0.5 rounded-full border border-black shadow">
+              Lvl 1
+            </span>
+          </div>
+
+          <div class="space-y-1">
+            <h2 id="playerName" class="font-bold text-lg text-slate-100 flex items-center gap-2">
+              <span>Shadow Quester</span>
+              <button id="editNameBtn" class="text-xs text-slate-500 hover:text-slate-300"><i class="fa-solid fa-pen"></i></button>
+            </h2>
+            <p id="playerRankTitle" class="text-xs font-semibold text-neonCyan uppercase tracking-wider">Hero Rank: Initiate</p>
+            <div class="text-xs text-slate-400 pt-1">Combined Stat Levels: <span id="combinedLevelDisplay" class="text-slate-200 font-bold">5 / 500</span></div>
+          </div>
+        </div>
+
+        <!-- Center & Right: Level Progress Bar & Stat Grid -->
+        <div class="space-y-4 md:col-span-2">
+          <div>
+            <div class="flex justify-between items-center text-xs font-semibold mb-1">
+              <span class="text-slate-300 flex items-center gap-1.5"><i class="fa-solid fa-bolt text-neonGold"></i> Overall Character Level</span>
+              <span id="overallLevelTextDisplay" class="text-neonGold">Total Character Power: Level 1 (5 / 500 Levels)</span>
+            </div>
+            <div class="w-full h-3.5 bg-rpgBg rounded-full border border-rpgBorder/80 p-0.5 overflow-hidden">
+              <div id="overallXpBarFill" class="h-full bg-gradient-to-r from-amber-500 via-neonGold to-yellow-300 rounded-full transition-all duration-500 w-[1%]"></div>
+            </div>
+          </div>
+
+          <!-- Interactive 5-Stat Cards -->
+          <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">Click a Stat to View 100-Level Tree & Titles:</p>
+          <div class="grid grid-cols-2 sm:grid-cols-5 gap-2">
+            
+            <!-- STR -->
+            <button onclick="openStatDetailModal('STR')" class="bg-rpgBg/80 hover:bg-rpgBg p-2.5 rounded-xl border border-rpgBorder hover:border-red-500/50 transition-all text-left group">
+              <div class="flex items-center justify-between mb-1">
+                <span class="text-[10px] text-red-400 font-black flex items-center gap-1"><i class="fa-solid fa-dumbbell"></i> STR</span>
+                <span id="badgeStrLvl" class="text-xs font-extrabold text-slate-200">L1</span>
+              </div>
+              <p id="badgeStrTitle" class="text-[10px] text-slate-400 font-medium truncate">Couch Potato</p>
+            </button>
+
+            <!-- INT -->
+            <button onclick="openStatDetailModal('INT')" class="bg-rpgBg/80 hover:bg-rpgBg p-2.5 rounded-xl border border-rpgBorder hover:border-cyan-500/50 transition-all text-left group">
+              <div class="flex items-center justify-between mb-1">
+                <span class="text-[10px] text-cyan-400 font-black flex items-center gap-1"><i class="fa-solid fa-brain"></i> INT</span>
+                <span id="badgeIntLvl" class="text-xs font-extrabold text-slate-200">L1</span>
+              </div>
+              <p id="badgeIntTitle" class="text-[10px] text-slate-400 font-medium truncate">Daydreamer</p>
+            </button>
+
+            <!-- DIS -->
+            <button onclick="openStatDetailModal('DIS')" class="bg-rpgBg/80 hover:bg-rpgBg p-2.5 rounded-xl border border-rpgBorder hover:border-emerald-500/50 transition-all text-left group">
+              <div class="flex items-center justify-between mb-1">
+                <span class="text-[10px] text-emerald-400 font-black flex items-center gap-1"><i class="fa-solid fa-shield-halved"></i> DIS</span>
+                <span id="badgeDisLvl" class="text-xs font-extrabold text-slate-200">L1</span>
+              </div>
+              <p id="badgeDisTitle" class="text-[10px] text-slate-400 font-medium truncate">Procrastinator</p>
+            </button>
+
+            <!-- ENG -->
+            <button onclick="openStatDetailModal('ENG')" class="bg-rpgBg/80 hover:bg-rpgBg p-2.5 rounded-xl border border-rpgBorder hover:border-amber-500/50 transition-all text-left group">
+              <div class="flex items-center justify-between mb-1">
+                <span class="text-[10px] text-amber-400 font-black flex items-center gap-1"><i class="fa-solid fa-bolt-lightning"></i> ENG</span>
+                <span id="badgeEngLvl" class="text-xs font-extrabold text-slate-200">L1</span>
+              </div>
+              <p id="badgeEngTitle" class="text-[10px] text-slate-400 font-medium truncate">Sluggish</p>
+            </button>
+
+            <!-- CHA -->
+            <button onclick="openStatDetailModal('CHA')" class="bg-rpgBg/80 hover:bg-rpgBg p-2.5 rounded-xl border border-rpgBorder hover:border-rose-500/50 transition-all text-left group col-span-2 sm:col-span-1">
+              <div class="flex items-center justify-between mb-1">
+                <span class="text-[10px] text-rose-400 font-black flex items-center gap-1"><i class="fa-solid fa-comments"></i> CHA</span>
+                <span id="badgeChaLvl" class="text-xs font-extrabold text-slate-200">L1</span>
+              </div>
+              <p id="badgeChaTitle" class="text-[10px] text-slate-400 font-medium truncate">Wallflower</p>
+            </button>
+
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <section class="bg-rpgCard border border-rpgBorder rounded-2xl p-4 shadow-lg">
+      <div class="flex items-center justify-between mb-3 border-b border-rpgBorder pb-2">
+        <div class="flex items-center gap-2">
+          <i class="fa-solid fa-repeat text-neonCyan text-sm"></i>
+          <h3 class="text-xs font-black uppercase tracking-wider text-slate-200">Daily Core Habits (Resets Daily)</h3>
+        </div>
+        <div class="flex items-center gap-3">
+          <span class="text-[10px] font-bold text-slate-400 flex items-center gap-1">
+            <i class="fa-solid fa-clock text-neonGold"></i> Midnight Auto Reset
+          </span>
+        </div>
+      </div>
+
+      <!-- Core Habits Cards Grid -->
+      <div id="coreHabitsGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        <!-- Dynamically rendered via JS -->
+      </div>
+    </section>
+
+    <section class="space-y-4">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        
+        <!-- Tab Controls -->
+        <div class="flex items-center gap-1 bg-rpgCard border border-rpgBorder p-1 rounded-xl w-full sm:w-auto">
+          <button onclick="switchTab('ACTIVE')" id="tabActive" class="flex-1 sm:flex-none px-4 py-2 rounded-lg text-xs font-bold transition-all bg-neonPurple text-white shadow-glow-purple">
+            <i class="fa-solid fa-list-check mr-1.5"></i> Active
+          </button>
+          <button onclick="switchTab('DAILY')" id="tabDaily" class="flex-1 sm:flex-none px-4 py-2 rounded-lg text-xs font-bold transition-all text-slate-400 hover:text-slate-200">
+            <i class="fa-solid fa-calendar-day mr-1.5"></i> Dailies
+          </button>
+          <button onclick="switchTab('LOG')" id="tabLog" class="flex-1 sm:flex-none px-4 py-2 rounded-lg text-xs font-bold transition-all text-slate-400 hover:text-slate-200">
+            <i class="fa-solid fa-circle-check mr-1.5"></i> Log
+          </button>
+          <button onclick="switchTab('TIMER')" id="tabTimer" class="flex-1 sm:flex-none px-4 py-2 rounded-lg text-xs font-bold transition-all text-slate-400 hover:text-slate-200">
+            <i class="fa-solid fa-stopwatch mr-1.5"></i> Focus Sprint
+          </button>
+        </div>
+
+        <!-- Filter & Add Actions -->
+        <div class="flex items-center gap-2">
+          <select id="statFilter" onchange="renderQuestList()" class="bg-rpgCard border border-rpgBorder text-xs text-slate-300 font-bold px-3 py-2 rounded-xl focus:outline-none focus:border-neonPurple">
+            <option value="ALL">All Stats</option>
+            <option value="STR">STR (Strength)</option>
+            <option value="INT">INT (Intelligence)</option>
+            <option value="DIS">DIS (Discipline)</option>
+            <option value="ENG">ENG (Energy)</option>
+            <option value="CHA">CHA (Charisma)</option>
+          </select>
+
+          <button id="openNewQuestModalBtn" class="px-4 py-2 bg-gradient-to-r from-teal-500 to-emerald-600 hover:from-teal-400 hover:to-emerald-500 text-slate-950 font-black rounded-xl text-xs shadow-glow-green transition-all flex items-center gap-1.5">
+            <i class="fa-solid fa-plus"></i> New Custom Quest
+          </button>
+        </div>
+
+      </div>
+
+      <!-- Quest List Container -->
+      <div id="questList" class="space-y-3">
+        <!-- Dynamically populated via JS -->
+      </div>
+
+      <!-- Focus Sprint Timer View Container (Hidden by default) -->
+      <div id="timerContainer" class="bg-rpgCard border border-rpgBorder rounded-2xl p-8 text-center space-y-6 hidden shadow-xl">
+        <div class="max-w-md mx-auto space-y-2">
+          <span class="px-3 py-1 bg-purple-500/20 text-neonPurple border border-purple-500/30 text-xs font-bold rounded-full">
+            <i class="fa-solid fa-dungeon mr-1"></i> Dungeon Run Focus Sprint
+          </span>
+          <h3 class="text-xl font-bold text-slate-100">25-Minute Focus Challenge</h3>
+          <p class="text-xs text-slate-400">Lock in completely without distraction to earn +100 DIS Bonus XP upon completion!</p>
+        </div>
+
+        <div id="timerDisplay" class="text-6xl sm:text-7xl font-black text-slate-100 font-mono tracking-wider drop-shadow-lg">
+          25:00
+        </div>
+
+        <div class="flex justify-center items-center gap-3">
+          <button id="startTimerBtn" onclick="startTimer()" class="px-6 py-3 bg-neonGreen text-slate-950 font-black rounded-xl shadow-glow-green hover:bg-emerald-400 transition-all flex items-center gap-2 text-sm">
+            <i class="fa-solid fa-play"></i> Start Sprint
+          </button>
+          <button id="pauseTimerBtn" onclick="pauseTimer()" class="px-6 py-3 bg-amber-500 text-slate-950 font-black rounded-xl shadow-glow-gold hover:bg-amber-400 transition-all hidden items-center gap-2 text-sm">
+            <i class="fa-solid fa-pause"></i> Pause
+          </button>
+          <button onclick="resetTimer()" class="px-4 py-3 bg-rpgBg border border-rpgBorder text-slate-300 font-bold rounded-xl hover:bg-slate-800 transition-all text-sm">
+            <i class="fa-solid fa-rotate-left"></i>
+          </button>
+        </div>
+      </div>
+
+    </section>
+
+  </main>
+
+  
+  <!-- MODAL: EDIT CORE HABIT GOAL & XP -->
+  <div id="editHabitModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-rpgCard border border-rpgBorder rounded-2xl p-6 w-full max-w-lg shadow-2xl relative">
+      <div class="flex justify-between items-center pb-3 border-b border-rpgBorder">
+        <div class="flex items-center gap-2.5">
+          <div class="w-9 h-9 rounded-xl bg-cyan-600/20 text-neonCyan border border-cyan-500/30 flex items-center justify-center text-lg font-bold">
+            <i class="fa-solid fa-sliders"></i>
+          </div>
+          <div>
+            <h3 id="editHabitModalTitle" class="text-base font-black text-slate-100">Customize Daily Habit</h3>
+            <p class="text-xs text-slate-400">Adjust target goal & auto-calculated XP rewards</p>
+          </div>
+        </div>
+        <button id="closeEditHabitModalBtn" class="text-slate-400 hover:text-slate-200 text-lg">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <form id="editHabitForm" class="space-y-4 pt-4">
+        <input type="hidden" id="editHabitKey">
+
+        <div>
+          <label class="block text-xs font-bold text-slate-300 mb-1">Habit Title</label>
+          <input type="text" id="editHabitLabel" required 
+                 class="w-full bg-rpgBg border border-rpgBorder rounded-xl px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-neonCyan transition-colors">
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-bold text-slate-300 mb-1">Target Amount</label>
+            <input type="number" id="editHabitTarget" min="1" required 
+                   class="w-full bg-rpgBg border border-rpgBorder rounded-xl px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-neonCyan transition-colors">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-300 mb-1">Unit / Metric</label>
+            <input type="text" id="editHabitUnit" required placeholder="e.g. Steps, Mins, Pages, Grams" 
+                   class="w-full bg-rpgBg border border-rpgBorder rounded-xl px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-neonCyan transition-colors">
+          </div>
+        </div>
+
+        <div class="bg-rpgBg p-3.5 rounded-xl border border-rpgBorder space-y-2">
+          <div class="flex justify-between items-center text-xs font-bold text-slate-200">
+            <span>Dynamic Calculated XP Reward</span>
+            <span id="calculatedXpPreview" class="text-neonGold font-extrabold">+0 XP</span>
+          </div>
+          <p class="text-[11px] text-slate-400">XP scales dynamically based on your target intensity relative to baseline standard goals.</p>
+        </div>
+
+        <button type="submit" class="w-full bg-gradient-to-r from-neonCyan to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 font-black py-2.5 rounded-xl shadow-glow-cyan transition-all mt-2">
+          Save Custom Goal
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: ADD CUSTOM QUEST -->
+  <div id="newQuestModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-rpgCard border border-rpgBorder rounded-2xl p-6 w-full max-w-md shadow-2xl relative">
+      <div class="flex justify-between items-center pb-3 border-b border-rpgBorder">
+        <h3 class="text-base font-black text-slate-100 flex items-center gap-2">
+          <i class="fa-solid fa-scroll text-neonPurple"></i> Create Custom Quest
+        </h3>
+        <button id="closeNewQuestModalBtn" class="text-slate-400 hover:text-slate-200 text-lg">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <form id="newQuestForm" class="space-y-4 pt-4">
+        <div>
+          <label class="block text-xs font-bold text-slate-300 mb-1">Quest Title</label>
+          <input type="text" id="questTitleInput" required placeholder="e.g., Read 3 chapters, 100 Pushups..." 
+                 class="w-full bg-rpgBg border border-rpgBorder rounded-xl px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-neonPurple transition-colors">
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-bold text-slate-300 mb-1">Target Stat</label>
+            <select id="questStatInput" class="w-full bg-rpgBg border border-rpgBorder text-xs text-slate-100 font-bold px-3 py-2 rounded-xl focus:outline-none focus:border-neonPurple">
+              <option value="STR">STR (Strength)</option>
+              <option value="INT">INT (Intelligence)</option>
+              <option value="DIS">DIS (Discipline)</option>
+              <option value="ENG">ENG (Energy)</option>
+              <option value="CHA">CHA (Charisma)</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-300 mb-1">Type</label>
+            <select id="questTypeInput" class="w-full bg-rpgBg border border-rpgBorder text-xs text-slate-100 font-bold px-3 py-2 rounded-xl focus:outline-none focus:border-neonPurple">
+              <option value="ACTIVE">One-Time Quest</option>
+              <option value="DAILY">Daily Task</option>
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-300 mb-1">Difficulty & XP Reward</label>
+          <select id="questDifficultyInput" class="w-full bg-rpgBg border border-rpgBorder text-xs text-slate-100 font-bold px-3 py-2 rounded-xl focus:outline-none focus:border-neonPurple">
+            <option value="EASY">Easy (+15 XP)</option>
+            <option value="MEDIUM" selected>Medium (+35 XP)</option>
+            <option value="HARD">Hard (+75 XP)</option>
+            <option value="EPIC">Epic (+150 XP)</option>
+            <option value="LEGENDARY">Legendary (+300 XP)</option>
+          </select>
+        </div>
+
+        <button type="submit" class="w-full bg-gradient-to-r from-neonPurple to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold py-2.5 rounded-xl shadow-glow-purple transition-all mt-2">
+          Accept & Add Quest
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: PRESET QUEST LIBRARY -->
+  <div id="libraryModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-rpgCard border border-rpgBorder rounded-2xl p-6 w-full max-w-3xl max-h-[85vh] flex flex-col shadow-2xl relative">
+      <div class="flex justify-between items-center pb-3 border-b border-rpgBorder flex-shrink-0">
+        <div class="flex items-center gap-2.5">
+          <div class="w-9 h-9 rounded-xl bg-purple-600/20 text-neonPurple border border-purple-500/30 flex items-center justify-center text-lg font-bold">
+            <i class="fa-solid fa-book-bookmark"></i>
+          </div>
+          <div>
+            <h3 class="text-base font-black text-slate-100">Pre-Built Quest Library</h3>
+            <p class="text-xs text-slate-400">Pick challenges ranging from quick tasks to Legendary Marathons</p>
+          </div>
+        </div>
+        <button id="closeLibraryModalBtn" class="text-slate-400 hover:text-slate-200 text-lg">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <!-- Categories Filter Bar -->
+      <div class="flex items-center gap-2 py-3 border-b border-rpgBorder overflow-x-auto flex-shrink-0">
+        <button onclick="filterLibrary('ALL')" class="lib-cat-btn px-3 py-1.5 rounded-lg text-xs font-bold bg-neonPurple text-white">All</button>
+        <button onclick="filterLibrary('FITNESS')" class="lib-cat-btn px-3 py-1.5 rounded-lg text-xs font-bold bg-rpgBg text-slate-400 hover:text-slate-200">Fitness & Running</button>
+        <button onclick="filterLibrary('MIND')" class="lib-cat-btn px-3 py-1.5 rounded-lg text-xs font-bold bg-rpgBg text-slate-400 hover:text-slate-200">Mind & Intellect</button>
+        <button onclick="filterLibrary('DISCIPLINE')" class="lib-cat-btn px-3 py-1.5 rounded-lg text-xs font-bold bg-rpgBg text-slate-400 hover:text-slate-200">Discipline</button>
+        <button onclick="filterLibrary('SOCIAL')" class="lib-cat-btn px-3 py-1.5 rounded-lg text-xs font-bold bg-rpgBg text-slate-400 hover:text-slate-200">Social & Charisma</button>
+      </div>
+
+      <!-- Preset Grid -->
+      <div id="libraryGrid" class="grid grid-cols-1 md:grid-cols-2 gap-3 pt-4 overflow-y-auto flex-1 pr-1">
+        <!-- Dynamically rendered via JS -->
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: 100-LEVEL STAT DETAIL TREE -->
+  <div id="statDetailModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-rpgCard border border-rpgBorder rounded-2xl p-6 w-full max-w-xl max-h-[85vh] flex flex-col shadow-2xl relative">
+      <div class="flex justify-between items-center pb-3 border-b border-rpgBorder flex-shrink-0">
+        <div class="flex items-center gap-3">
+          <div id="modalStatIcon" class="w-10 h-10 rounded-xl bg-slate-800 flex items-center justify-center text-xl"></div>
+          <div>
+            <h3 id="modalStatName" class="text-base font-black text-slate-100">Strength</h3>
+            <p id="modalStatRankTitle" class="text-xs font-semibold text-neonCyan">Greek God of Might</p>
+          </div>
+        </div>
+        <button id="closeStatDetailBtn" class="text-slate-400 hover:text-slate-200 text-lg">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <!-- Level Progress Bar -->
+      <div class="py-4 border-b border-rpgBorder space-y-2 flex-shrink-0">
+        <div class="flex justify-between text-xs font-bold">
+          <span id="modalStatLevelText" class="text-slate-200">Level 1 / 100</span>
+          <span class="text-slate-400"><span id="modalStatCurrentXp" class="text-neonGold">0</span> / <span id="modalStatNextXp">100</span> XP</span>
+        </div>
+        <div class="w-full h-3 bg-rpgBg rounded-full border border-rpgBorder overflow-hidden">
+          <div id="modalStatBarFill" class="h-full bg-gradient-to-r from-neonCyan to-neonPurple rounded-full transition-all duration-500 w-0"></div>
+        </div>
+      </div>
+
+      <!-- Title Milestones List -->
+      <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider pt-3 pb-2 flex-shrink-0">100-Level Title Milestones:</p>
+      <div id="modalMilestoneList" class="space-y-2 overflow-y-auto flex-1 pr-1">
+        <!-- Dynamically populated -->
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: LEVEL UP CELEBRATION -->
+  <div id="levelUpModal" class="fixed inset-0 bg-black/90 backdrop-blur-md z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-rpgCard border-2 border-neonGold rounded-3xl p-8 max-w-sm w-full text-center space-y-5 shadow-glow-gold relative overflow-hidden animate-bounce-short">
+      <div class="w-20 h-20 mx-auto rounded-3xl bg-gradient-to-tr from-amber-500 to-yellow-300 flex items-center justify-center text-slate-950 text-4xl font-black shadow-glow-gold">
+        <i id="levelUpIcon" class="fa-solid fa-trophy"></i>
+      </div>
+
+      <div class="space-y-1">
+        <span class="text-xs font-black uppercase tracking-widest text-neonGold">Level Up Achieved!</span>
+        <h3 id="levelUpStatName" class="text-2xl font-black text-slate-100">Strength</h3>
+        <p id="newLevelText" class="text-lg font-extrabold text-neonCyan">Level 2</p>
+      </div>
+
+      <div class="bg-rpgBg p-3 rounded-xl border border-rpgBorder space-y-1">
+        <p class="text-[10px] uppercase font-bold text-slate-400">New Rank Title Unlocked:</p>
+        <p id="newTitleText" class="text-sm font-black text-neonGold">Novice Lifter</p>
+      </div>
+
+      <button onclick="document.getElementById('levelUpModal').classList.add('hidden')" class="w-full py-3 bg-gradient-to-r from-amber-500 to-neonGold hover:from-amber-400 hover:to-yellow-300 text-slate-950 font-black rounded-xl shadow-glow-gold transition-all">
+        Claim Glory
+      </button>
+    </div>
+  </div>
+
+  <script>
+    /* ==========================================================================
+       RETRO AUDIO SYNTHESIZER (WEB AUDIO API)
+       ========================================================================== */
+    class SoundFx {
+      constructor() {
+        this.ctx = null;
+      }
+      init() {
+        if (!this.ctx) {
+          this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+      }
+      playQuestComplete() {
+        this.init();
+        if (!this.ctx) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(523.25, now); // C5
+        osc.frequency.exponentialRampToValueAtTime(659.25, now + 0.1); // E5
+        osc.frequency.exponentialRampToValueAtTime(783.99, now + 0.2); // G5
+        osc.frequency.exponentialRampToValueAtTime(1046.50, now + 0.35); // C6
+        gain.gain.setValueAtTime(0.15, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.4);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.4);
+      }
+      playLevelUp() {
+        this.init();
+        if (!this.ctx) return;
+        const now = this.ctx.currentTime;
+        const notes = [440, 554.37, 659.25, 880, 1108.73, 1318.51];
+        notes.forEach((freq, idx) => {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(freq, now + (idx * 0.08));
+          gain.gain.setValueAtTime(0.2, now + (idx * 0.08));
+          gain.gain.exponentialRampToValueAtTime(0.01, now + (idx * 0.08) + 0.3);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start(now + (idx * 0.08));
+          osc.stop(now + (idx * 0.08) + 0.3);
+        });
+      }
+    }
+    const sfx = new SoundFx();
+
+    /* ==========================================================================
+       100-LEVEL STAT ENGINE & TITLES (GREEK GOD / OMNISCIENT REACH)
+       ========================================================================== */
+    function getXpForStatLevel(level) {
+      if (level <= 1) return 100;
+      return Math.round(100 * Math.pow(level, 1.6));
+    }
+
+    const STAT_CONFIGS = {
+      STR: {
+        name: "Strength",
+        icon: "fa-dumbbell",
+        colorClass: "text-red-400",
+        bgClass: "bg-red-500/10 border-red-500/30",
+        getRankTitle: (lvl) => {
+          if (lvl >= 100) return "Kratos (God of Might)";
+          if (lvl >= 90) return "Titan of Iron";
+          if (lvl >= 80) return "Behemoth";
+          if (lvl >= 70) return "Hercules' Rival";
+          if (lvl >= 60) return "Unstoppable Force";
+          if (lvl >= 50) return "Apex Athlete";
+          if (lvl >= 40) return "Iron Warrior";
+          if (lvl >= 30) return "Gym Veteran";
+          if (lvl >= 20) return "Dedicated Lifter";
+          if (lvl >= 10) return "Novice Athlete";
+          return "Couch Potato";
+        }
+      },
+      INT: {
+        name: "Intelligence",
+        icon: "fa-brain",
+        colorClass: "text-cyan-400",
+        bgClass: "bg-cyan-500/10 border-cyan-500/30",
+        getRankTitle: (lvl) => {
+          if (lvl >= 100) return "The Omniscient One";
+          if (lvl >= 90) return "Athena's Mind";
+          if (lvl >= 80) return "Universal Grandmaster";
+          if (lvl >= 70) return "Polymath Supreme";
+          if (lvl >= 60) return "Sage of Wisdom";
+          if (lvl >= 50) return "Master Architect";
+          if (lvl >= 40) return "Deep Thinker";
+          if (lvl >= 30) return "Scholar";
+          if (lvl >= 20) return "Keen Analyst";
+          if (lvl >= 10) return "Avid Reader";
+          return "Daydreamer";
+        }
+      },
+      DIS: {
+        name: "Discipline",
+        icon: "fa-shield-halved",
+        colorClass: "text-emerald-400",
+        bgClass: "bg-emerald-500/10 border-emerald-500/30",
+        getRankTitle: (lvl) => {
+          if (lvl >= 100) return "Master of Fate";
+          if (lvl >= 90) return "Stoic Immortal";
+          if (lvl >= 80) return "Unshakable Monk";
+          if (lvl >= 70) return "Iron Will Warden";
+          if (lvl >= 60) return "Focus Commander";
+          if (lvl >= 50) return "Habit Executioner";
+          if (lvl >= 40) return "Routine Specialist";
+          if (lvl >= 30) return "Consistent Practitioner";
+          if (lvl >= 20) return "Focused Mind";
+          if (lvl >= 10) return "Task Finisher";
+          return "Procrastinator";
+        }
+      },
+      ENG: {
+        name: "Energy",
+        icon: "fa-bolt-lightning",
+        colorClass: "text-amber-400",
+        bgClass: "bg-amber-500/10 border-amber-500/30",
+        getRankTitle: (lvl) => {
+          if (lvl >= 100) return "Eternal Sun God";
+          if (lvl >= 90) return "Hyperion's Light";
+          if (lvl >= 80) return "Lightning Core";
+          if (lvl >= 70) return "Dynamo Prime";
+          if (lvl >= 60) return "Endurance Titan";
+          if (lvl >= 50) return "High-Vibe Operator";
+          if (lvl >= 40) return "Vibrant Dynamo";
+          if (lvl >= 30) return "Active Engine";
+          if (lvl >= 20) return "Well Rested";
+          if (lvl >= 10) return "Morning Person";
+          return "Sluggish";
+        }
+      },
+      CHA: {
+        name: "Charisma",
+        icon: "fa-comments",
+        colorClass: "text-rose-400",
+        bgClass: "bg-rose-500/10 border-rose-500/30",
+        getRankTitle: (lvl) => {
+          if (lvl >= 100) return "Aphrodite Incarnate";
+          if (lvl >= 90) return "Silver-Tongued Sovereign";
+          if (lvl >= 80) return "Magnetic Luminary";
+          if (lvl >= 70) return "Master Negotiator";
+          if (lvl >= 60) return "Inspiring Leader";
+          if (lvl >= 50) return "Captivating Speaker";
+          if (lvl >= 40) return "Networker";
+          if (lvl >= 30) return "Social Catalyst";
+          if (lvl >= 20) return "Fluent Conversationalist";
+          if (lvl >= 10) return "Friendly Neighbor";
+          return "Wallflower";
+        }
+      }
+    };
+
+    /* ==========================================================================
+       HABITS BASELINE CONFIGURATIONS & DYNAMIC XP CALCULATOR
+       ========================================================================== */
+    const HABIT_BASELINE_CONFIGS = {
+      workout: {
+        label: "Daily Workout",
+        target: 45,
+        unit: "Mins",
+        primaryStat: "STR",
+        secondaryStat: "DIS",
+        calcXp: (target) => ({
+          primary: Math.max(10, Math.round(target * 0.9)),
+          secondary: Math.max(5, Math.round(target * 0.45))
+        })
+      },
+      steps: {
+        label: "Daily Steps",
+        target: 8000,
+        unit: "Steps",
+        primaryStat: "ENG",
+        secondaryStat: "STR",
+        calcXp: (target) => ({
+          primary: Math.max(10, Math.round(target / 250)),
+          secondary: Math.max(5, Math.round(target / 600))
+        })
+      },
+      macros: {
+        label: "Track Macros",
+        target: 100,
+        unit: "% On Target",
+        primaryStat: "DIS",
+        secondaryStat: "ENG",
+        calcXp: (target) => ({
+          primary: Math.max(10, Math.round((target / 100) * 25)),
+          secondary: Math.max(5, Math.round((target / 100) * 20))
+        })
+      },
+      reading: {
+        label: "Daily Reading",
+        target: 20,
+        unit: "Pages",
+        primaryStat: "INT",
+        secondaryStat: "DIS",
+        calcXp: (target) => ({
+          primary: Math.max(10, Math.round(target * 1.75)),
+          secondary: Math.max(5, Math.round(target * 0.75))
+        })
+      }
+    };
+
+    /* ==========================================================================
+       PRE-BUILT QUEST LIBRARY DATA
+       ========================================================================== */
+    const PRESET_QUESTS = [
+      { id: 'p1', cat: 'FITNESS', title: '5K Run Challenge', stat: 'STR', difficulty: 'MEDIUM', xp: 50, type: 'ACTIVE', desc: 'Complete a continuous 5km outdoor or treadmill run.' },
+      { id: 'p2', cat: 'FITNESS', title: '10K Endurance Run', stat: 'STR', difficulty: 'HARD', xp: 110, type: 'ACTIVE', desc: 'Push your stamina with a 10km run.' },
+      { id: 'p3', cat: 'FITNESS', title: 'Half Marathon (21.1 km)', stat: 'STR', difficulty: 'EPIC', xp: 250, type: 'ACTIVE', desc: 'Conquer 21.1 kilometers of relentless effort.' },
+      { id: 'p4', cat: 'FITNESS', title: 'Full Marathon (42.2 km)', stat: 'STR', difficulty: 'LEGENDARY', xp: 600, type: 'ACTIVE', desc: 'The ultimate test of physical endurance and willpower.' },
+      { id: 'p5', cat: 'MIND', title: 'Read 50 Pages of Non-Fiction', stat: 'INT', difficulty: 'MEDIUM', xp: 40, type: 'ACTIVE', desc: 'Deeply absorb knowledge from an educational book.' },
+      { id: 'p6', cat: 'MIND', title: 'Finish an Online Course Module', stat: 'INT', difficulty: 'HARD', xp: 85, type: 'ACTIVE', desc: 'Complete a full video module and take detailed notes.' },
+      { id: 'p7', cat: 'DISCIPLINE', title: 'Cold Shower & 0 Screen Time Hour', stat: 'DIS', difficulty: 'EASY', xp: 20, type: 'DAILY', desc: 'Kickstart willpower with a cold rinse and digital detox.' },
+      { id: 'p8', cat: 'DISCIPLINE', title: 'Fast Until Noon (Intermittent Fast)', stat: 'DIS', difficulty: 'MEDIUM', xp: 35, type: 'DAILY', desc: 'Practice metabolic discipline and skip morning snacks.' },
+      { id: 'p9', cat: 'SOCIAL', title: 'Networking Reach-out / Call Friend', stat: 'CHA', difficulty: 'EASY', xp: 20, type: 'ACTIVE', desc: 'Strengthen social bonds or make a professional intro.' },
+      { id: 'p10', cat: 'SOCIAL', title: 'Give 3 Genuine Compliments Today', stat: 'CHA', difficulty: 'EASY', xp: 25, type: 'DAILY', desc: 'Spread positive vibes to people you interact with.' }
+    ];
+
+    /* ==========================================================================
+       APP STATE & LOCAL STORAGE PERSISTENCE
+       ========================================================================== */
+    const DEFAULT_STATE = {
+      playerName: "Shadow Quester",
+      streak: 1,
+      lastLoginDate: new Date().toDateString(),
+      coreHabits: {
+        workout: false,
+        steps: false,
+        macros: false,
+        reading: false
+      },
+      customHabits: {
+        workout: { label: "Daily Workout", target: 45, unit: "Mins" },
+        steps: { label: "Daily Steps", target: 8000, unit: "Steps" },
+        macros: { label: "Track Macros", target: 100, unit: "% On Target" },
+        reading: { label: "Daily Reading", target: 20, unit: "Pages" }
+      },
+      stats: {
+        STR: { level: 1, xp: 0 },
+        INT: { level: 1, xp: 0 },
+        DIS: { level: 1, xp: 0 },
+        ENG: { level: 1, xp: 0 },
+        CHA: { level: 1, xp: 0 }
+      },
+      quests: [
+        { id: '1', title: '50 Pushups & Gym Session', stat: 'STR', difficulty: 'MEDIUM', xp: 35, type: 'ACTIVE', completed: false },
+        { id: '2', title: 'Read 20 pages of a book', stat: 'INT', difficulty: 'EASY', xp: 15, type: 'ACTIVE', completed: false },
+        { id: '3', title: 'No Distractions 1-Hour Focus Sprint', stat: 'DIS', difficulty: 'HARD', xp: 75, type: 'DAILY', completed: false },
+        { id: '4', title: 'Cold Shower & 8 Hours Sleep', stat: 'ENG', difficulty: 'EASY', xp: 15, type: 'DAILY', completed: false },
+        { id: '5', title: 'Send networking message / call friend', stat: 'CHA', difficulty: 'EASY', xp: 15, type: 'ACTIVE', completed: false }
+      ]
+    };
+
+    let gameState = loadState();
+
+    function loadState() {
+      const saved = localStorage.getItem('levelUpLife_v2_State');
+      if (!saved) return DEFAULT_STATE;
+      try {
+        const parsed = JSON.parse(saved);
+        const today = new Date().toDateString();
+
+        // Midnight Reset Engine Check
+        if (parsed.lastLoginDate !== today) {
+          const last = new Date(parsed.lastLoginDate);
+          const diffDays = Math.floor((new Date() - last) / (1000 * 60 * 60 * 24));
+
+          if (diffDays === 1) parsed.streak += 1;
+          else if (diffDays > 1) parsed.streak = 1;
+
+          // Reset daily core habits
+          if (!parsed.coreHabits) parsed.coreHabits = {};
+          parsed.coreHabits.workout = false;
+          parsed.coreHabits.steps = false;
+          parsed.coreHabits.macros = false;
+          parsed.coreHabits.reading = false;
+
+          // Reset Dailies tasks
+          if (parsed.quests) {
+            parsed.quests.forEach(q => {
+              if (q.type === 'DAILY') q.completed = false;
+            });
+          }
+
+          parsed.lastLoginDate = today;
+          localStorage.setItem('levelUpLife_v2_State', JSON.stringify(parsed));
+        }
+
+        if (!parsed.coreHabits) parsed.coreHabits = { workout: false, steps: false, macros: false, reading: false };
+        if (!parsed.customHabits) parsed.customHabits = JSON.parse(JSON.stringify(DEFAULT_STATE.customHabits));
+
+        return parsed;
+      } catch (e) {
+        return DEFAULT_STATE;
+      }
+    }
+
+    function saveState() {
+      localStorage.setItem('levelUpLife_v2_State', JSON.stringify(gameState));
+    }
+
+    /* ==========================================================================
+       UI RENDERING ENGINE
+       ========================================================================== */
+    let activeTab = 'ACTIVE';
+
+    function renderApp() {
+      let totalLevels = 0;
+
+      Object.keys(STAT_CONFIGS).forEach(statKey => {
+        const sData = gameState.stats[statKey];
+        totalLevels += sData.level;
+
+        const title = STAT_CONFIGS[statKey].getRankTitle(sData.level);
+        document.getElementById(`badge${capitalize(statKey)}Lvl`).textContent = `L${sData.level}`;
+        document.getElementById(`badge${capitalize(statKey)}Title`).textContent = title;
+      });
+
+      const overallCharLevel = Math.floor(totalLevels / 5);
+
+      document.getElementById('playerName').querySelector('span').textContent = gameState.playerName;
+      document.getElementById('streakCount').textContent = `${gameState.streak} Day Streak`;
+      document.getElementById('playerLevelBadge').textContent = `Lvl ${overallCharLevel}`;
+      document.getElementById('combinedLevelDisplay').textContent = `${totalLevels} / 500`;
+
+      const mainStat = STAT_CONFIGS.INT.getRankTitle(overallCharLevel);
+      document.getElementById('playerRankTitle').textContent = `Hero Rank: ${mainStat}`;
+
+      const progressPercent = Math.min(100, Math.floor((totalLevels / 500) * 100));
+      document.getElementById('overallLevelTextDisplay').textContent = `Total Character Power: Level ${overallCharLevel} (${totalLevels} / 500 Levels)`;
+      document.getElementById('overallXpBarFill').style.width = `${Math.max(2, progressPercent)}%`;
+
+      renderCoreHabits();
+      renderQuestList();
+    }
+
+    function capitalize(str) {
+      return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
+    }
+
+    function renderCoreHabits() {
+      const grid = document.getElementById('coreHabitsGrid');
+      grid.innerHTML = '';
+
+      const habitKeys = ['workout', 'steps', 'macros', 'reading'];
+
+      habitKeys.forEach(key => {
+        const base = HABIT_BASELINE_CONFIGS[key];
+        const custom = gameState.customHabits[key] || { label: base.label, target: base.target, unit: base.unit };
+        const isDone = gameState.coreHabits[key];
+
+        const calculated = base.calcXp(custom.target);
+        const primaryStatConf = STAT_CONFIGS[base.primaryStat];
+
+        const formattedTarget = typeof custom.target === 'number' ? custom.target.toLocaleString() : custom.target;
+        const displayLabel = `${custom.label} (${formattedTarget} ${custom.unit})`;
+
+        const card = document.createElement('div');
+        card.id = `habitCard_${key}`;
+        card.className = `bg-rpgBg border border-rpgBorder p-3 rounded-xl flex items-center justify-between transition-all relative group ${isDone ? 'border-emerald-500/50 bg-slate-900/50 opacity-80' : 'hover:border-slate-600'}`;
+
+        card.innerHTML = `
+          <div class="flex items-center gap-3 min-w-0 pr-2">
+            <button onclick="toggleCoreHabit('${key}')" class="w-8 h-8 rounded-lg border-2 border-rpgBorder flex items-center justify-center transition-all ${isDone ? 'bg-emerald-500 border-emerald-500 text-slate-950 font-black shadow' : 'hover:border-neonCyan'}">
+              ${isDone ? '<i class="fa-solid fa-check text-xs"></i>' : `<i class="fa-solid ${primaryStatConf.icon} ${primaryStatConf.colorClass}"></i>`}
+            </button>
+            <div class="truncate">
+              <p class="text-xs font-bold text-slate-100 truncate">${escapeHtml(displayLabel)}</p>
+              <p class="text-[10px] ${primaryStatConf.colorClass} font-semibold">
+                +${calculated.primary} ${base.primaryStat} • +${calculated.secondary} ${base.secondaryStat}
+              </p>
+            </div>
+          </div>
+
+          <div class="flex items-center gap-2">
+            <span class="text-[10px] font-bold ${isDone ? 'text-emerald-400 font-black' : 'text-slate-500'}">
+              ${isDone ? 'COMPLETED' : 'PENDING'}
+            </span>
+            <button onclick="openEditHabitModal('${key}')" class="text-slate-500 hover:text-neonCyan p-1 transition-colors" title="Customize Goal & XP">
+              <i class="fa-solid fa-gear text-xs"></i>
+            </button>
+          </div>
+        `;
+
+        grid.appendChild(card);
+      });
+    }
+
+    function toggleCoreHabit(key) {
+      const current = gameState.coreHabits[key];
+      gameState.coreHabits[key] = !current;
+
+      if (!current) {
+        sfx.playQuestComplete();
+        const base = HABIT_BASELINE_CONFIGS[key];
+        const custom = gameState.customHabits[key] || { target: base.target };
+        const rewards = base.calcXp(custom.target);
+
+        awardStatXp(base.primaryStat, rewards.primary, null);
+        awardStatXp(base.secondaryStat, rewards.secondary, null);
+        confetti({ particleCount: 30, spread: 60, origin: { y: 0.7 } });
+      }
+
+      saveState();
+      renderApp();
+    }
+
+    function openEditHabitModal(key) {
+      const base = HABIT_BASELINE_CONFIGS[key];
+      const custom = gameState.customHabits[key] || { label: base.label, target: base.target, unit: base.unit };
+
+      document.getElementById('editHabitKey').value = key;
+      document.getElementById('editHabitModalTitle').textContent = `Customize ${base.label}`;
+      document.getElementById('editHabitLabel').value = custom.label;
+      document.getElementById('editHabitTarget').value = custom.target;
+      document.getElementById('editHabitUnit').value = custom.unit;
+
+      updateXpPreview(key, custom.target);
+
+      document.getElementById('editHabitModal').classList.remove('hidden');
+    }
+
+    function updateXpPreview(key, targetVal) {
+      const base = HABIT_BASELINE_CONFIGS[key];
+      const target = parseFloat(targetVal) || 1;
+      const rewards = base.calcXp(target);
+
+      document.getElementById('calculatedXpPreview').textContent = `+${rewards.primary} ${base.primaryStat} • +${rewards.secondary} ${base.secondaryStat} XP`;
+    }
+
+    function renderQuestList() {
+      const container = document.getElementById('questList');
+      const statFilter = document.getElementById('statFilter').value;
+      container.innerHTML = '';
+
+      if (activeTab === 'TIMER') return;
+
+      let filtered = gameState.quests.filter(q => {
+        if (activeTab === 'ACTIVE') return q.type === 'ACTIVE' && !q.completed;
+        if (activeTab === 'DAILY') return q.type === 'DAILY';
+        if (activeTab === 'LOG') return q.completed;
+        return true;
+      });
+
+      if (statFilter !== 'ALL') {
+        filtered = filtered.filter(q => q.stat === statFilter);
+      }
+
+      if (filtered.length === 0) {
+        container.innerHTML = `
+          <div class="text-center py-12 border border-dashed border-rpgBorder rounded-2xl">
+            <i class="fa-solid fa-scroll text-3xl text-slate-600 mb-2"></i>
+            <p class="text-sm font-semibold text-slate-400">No quests found in this view.</p>
+            <p class="text-xs text-slate-500">Add a custom quest or select one from the Quest Library!</p>
+          </div>
+        `;
+        return;
+      }
+
+      filtered.forEach(quest => {
+        const conf = STAT_CONFIGS[quest.stat] || STAT_CONFIGS.STR;
+        const questCard = document.createElement('div');
+        questCard.className = `bg-rpgCard border border-rpgBorder hover:border-slate-600 p-4 rounded-xl flex items-center justify-between gap-4 transition-all shadow-md ${quest.completed ? 'opacity-60' : ''}`;
+        
+        let diffBadge = "text-emerald-400 border-emerald-500/30";
+        if (quest.difficulty === 'MEDIUM') diffBadge = "text-cyan-400 border-cyan-500/30";
+        if (quest.difficulty === 'HARD') diffBadge = "text-purple-400 border-purple-500/30";
+        if (quest.difficulty === 'EPIC') diffBadge = "text-amber-400 border-amber-500/30";
+        if (quest.difficulty === 'LEGENDARY') diffBadge = "text-rose-400 border-rose-500/50 bg-rose-500/10 animate-pulse";
+
+        questCard.innerHTML = `
+          <div class="flex items-center gap-3.5 flex-1 min-w-0">
+            <button onclick="toggleQuestComplete('${quest.id}', event)" class="w-6 h-6 rounded-lg border-2 border-rpgBorder flex items-center justify-center transition-all ${quest.completed ? 'bg-neonGreen border-neonGreen text-black' : 'hover:border-neonPurple'}">
+              ${quest.completed ? '<i class="fa-solid fa-check text-xs font-black"></i>' : ''}
+            </button>
+            <div class="truncate">
+              <h4 class="text-sm font-bold text-slate-100 truncate ${quest.completed ? 'line-through text-slate-400' : ''}">${escapeHtml(quest.title)}</h4>
+              <div class="flex items-center gap-2 pt-1 text-[11px]">
+                <span class="px-2 py-0.5 rounded-md ${conf.colorClass} ${conf.bgClass} font-bold flex items-center gap-1">
+                  <i class="fa-solid ${conf.icon}"></i> ${quest.stat}
+                </span>
+                <span class="px-2 py-0.5 rounded-md border ${diffBadge} font-semibold">
+                  +${quest.xp} XP
+                </span>
+                ${quest.type === 'DAILY' ? '<span class="text-[10px] text-neonCyan font-bold"><i class="fa-solid fa-rotate-right"></i> Daily</span>' : ''}
+              </div>
+            </div>
+          </div>
+
+          <button onclick="deleteQuest('${quest.id}')" class="text-slate-600 hover:text-red-400 p-2 transition-colors">
+            <i class="fa-solid fa-trash text-xs"></i>
+          </button>
+        `;
+        container.appendChild(questCard);
+      });
+    }
+
+    function escapeHtml(str) {
+      return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    }
+
+    /* ==========================================================================
+       QUEST LIBRARY RENDERING & CONTROLS
+       ========================================================================== */
+    let activeLibCat = 'ALL';
+
+    function renderLibraryGrid() {
+      const grid = document.getElementById('libraryGrid');
+      grid.innerHTML = '';
+
+      const filtered = PRESET_QUESTS.filter(p => activeLibCat === 'ALL' || p.cat === activeLibCat);
+
+      filtered.forEach(preset => {
+        const conf = STAT_CONFIGS[preset.stat];
+        const card = document.createElement('div');
+        card.className = "bg-rpgBg border border-rpgBorder hover:border-purple-500/60 p-3.5 rounded-xl flex flex-col justify-between gap-3 transition-all group";
+        
+        card.innerHTML = `
+          <div class="space-y-1">
+            <div class="flex items-center justify-between">
+              <span class="text-[10px] font-bold ${conf.colorClass} ${conf.bgClass} px-2 py-0.5 rounded-md flex items-center gap-1">
+                <i class="fa-solid ${conf.icon}"></i> ${preset.stat}
+              </span>
+              <span class="text-[10px] font-black text-amber-400">+${preset.xp} XP</span>
+            </div>
+            <h4 class="text-xs font-bold text-slate-100 group-hover:text-neonPurple transition-colors pt-1">${preset.title}</h4>
+            <p class="text-[11px] text-slate-400 leading-snug">${preset.desc}</p>
+          </div>
+
+          <button onclick="addPresetToQuests('${preset.id}')" class="w-full bg-rpgCard hover:bg-neonPurple text-slate-300 hover:text-white font-bold text-xs py-2 rounded-lg border border-rpgBorder hover:border-neonPurple transition-all flex items-center justify-center gap-1.5">
+            <i class="fa-solid fa-plus text-[10px]"></i> Accept Challenge
+          </button>
+        `;
+        grid.appendChild(card);
+      });
+    }
+
+    function filterLibrary(cat) {
+      activeLibCat = cat;
+      document.querySelectorAll('.lib-cat-btn').forEach(btn => {
+        btn.className = "lib-cat-btn px-3 py-1.5 rounded-lg text-xs font-bold bg-rpgBg text-slate-400 hover:text-slate-200";
+      });
+      event.target.className = "lib-cat-btn px-3 py-1.5 rounded-lg text-xs font-bold bg-neonPurple text-white";
+      renderLibraryGrid();
+    }
+
+    function addPresetToQuests(presetId) {
+      const preset = PRESET_QUESTS.find(p => p.id === presetId);
+      if (!preset) return;
+
+      gameState.quests.push({
+        id: Date.now().toString(),
+        title: preset.title,
+        stat: preset.stat,
+        difficulty: preset.difficulty,
+        xp: preset.xp,
+        type: preset.type,
+        completed: false
+      });
+
+      saveState();
+      renderApp();
+      sfx.playQuestComplete();
+
+      showFloatingXp(window.innerWidth / 2, window.innerHeight / 2, `Added "${preset.title}"`);
+      document.getElementById('libraryModal').classList.add('hidden');
+    }
+
+    /* ==========================================================================
+       QUEST COMPLETION & STAT LEVELING
+       ========================================================================== */
+    function toggleQuestComplete(id, event) {
+      const quest = gameState.quests.find(q => q.id === id);
+      if (!quest) return;
+
+      if (!quest.completed) {
+        quest.completed = true;
+        awardStatXp(quest.stat, quest.xp, event);
+        sfx.playQuestComplete();
+      } else {
+        quest.completed = false;
+      }
+
+      saveState();
+      renderApp();
+    }
+
+    function awardStatXp(statKey, xpAmount, event) {
+      const statObj = gameState.stats[statKey];
+      if (!statObj) return;
+
+      const prevLevel = statObj.level;
+      statObj.xp += xpAmount;
+
+      let reqXp = getXpForStatLevel(statObj.level);
+      while (statObj.xp >= reqXp && statObj.level < 100) {
+        statObj.level += 1;
+        reqXp = getXpForStatLevel(statObj.level);
+      }
+
+      if (event) {
+        showFloatingXp(event.clientX, event.clientY, `+${xpAmount} ${statKey} XP`);
+        confetti({ particleCount: 35, spread: 50, origin: { y: 0.8 } });
+      }
+
+      if (statObj.level > prevLevel) {
+        setTimeout(() => {
+          sfx.playLevelUp();
+          const conf = STAT_CONFIGS[statKey];
+          document.getElementById('levelUpStatName').textContent = conf.name;
+          document.getElementById('newLevelText').textContent = `Level ${statObj.level}`;
+          document.getElementById('newTitleText').textContent = conf.getRankTitle(statObj.level);
+          document.getElementById('levelUpIcon').className = `fa-solid ${conf.icon}`;
+          document.getElementById('levelUpModal').classList.remove('hidden');
+          confetti({ particleCount: 100, spread: 90, origin: { y: 0.5 } });
+        }, 300);
+      }
+    }
+
+    function showFloatingXp(x, y, text) {
+      const el = document.createElement('div');
+      el.className = 'float-xp text-neonGold text-sm';
+      el.textContent = text;
+      el.style.left = `${x}px`;
+      el.style.top = `${y - 20}px`;
+      document.body.appendChild(el);
+      setTimeout(() => el.remove(), 1200);
+    }
+
+    function deleteQuest(id) {
+      gameState.quests = gameState.quests.filter(q => q.id !== id);
+      saveState();
+      renderApp();
+    }
+
+    /* ==========================================================================
+       STAT DETAIL MODAL & 100-LEVEL TIMELINE
+       ========================================================================== */
+    function openStatDetailModal(statKey) {
+      const conf = STAT_CONFIGS[statKey];
+      const sData = gameState.stats[statKey];
+      const modal = document.getElementById('statDetailModal');
+
+      document.getElementById('modalStatName').textContent = `${conf.name} (100 Levels)`;
+      document.getElementById('modalStatRankTitle').textContent = conf.getRankTitle(sData.level);
+      document.getElementById('modalStatIcon').className = `w-9 h-9 rounded-xl flex items-center justify-center text-lg font-bold ${conf.colorClass} ${conf.bgClass}`;
+      document.getElementById('modalStatIcon').innerHTML = `<i class="fa-solid ${conf.icon}"></i>`;
+
+      document.getElementById('modalStatLevelText').textContent = `Level ${sData.level} / 100`;
+      
+      const nextXp = getXpForStatLevel(sData.level);
+      const prevXp = sData.level > 1 ? getXpForStatLevel(sData.level - 1) : 0;
+      const progressInLevel = sData.xp - prevXp;
+      const requiredInLevel = nextXp - prevXp;
+      const pct = sData.level >= 100 ? 100 : Math.min(100, Math.floor((progressInLevel / requiredInLevel) * 100));
+
+      document.getElementById('modalStatBarFill').style.width = `${pct}%`;
+      document.getElementById('modalStatCurrentXp').textContent = sData.xp.toLocaleString();
+      document.getElementById('modalStatNextXp').textContent = sData.level >= 100 ? "MAX" : nextXp.toLocaleString();
+
+      const milestonesList = document.getElementById('modalMilestoneList');
+      milestonesList.innerHTML = '';
+
+      const milestones = [1, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100];
+      
+      milestones.forEach(lvl => {
+        const title = conf.getRankTitle(lvl);
+        const isUnlocked = sData.level >= lvl;
+        const isCurrent = sData.level === lvl || (sData.level > lvl && sData.level < (lvl + 10));
+
+        const item = document.createElement('div');
+        item.className = `p-3 rounded-xl border flex items-center justify-between text-xs transition-all ${isUnlocked ? 'bg-rpgBg border-slate-700' : 'bg-rpgBg/40 border-rpgBorder opacity-50'} ${isCurrent ? 'border-neonGold shadow-glow-gold bg-amber-500/10' : ''}`;
+        
+        item.innerHTML = `
+          <div class="flex items-center gap-3">
+            <span class="w-8 h-8 rounded-lg flex items-center justify-center font-extrabold ${isUnlocked ? 'bg-neonGold/20 text-neonGold' : 'bg-slate-800 text-slate-500'}">
+              L${lvl}
+            </span>
+            <div>
+              <p class="font-bold text-slate-200">${title}</p>
+              <p class="text-[10px] text-slate-400">Req XP: ${getXpForStatLevel(lvl).toLocaleString()}</p>
+            </div>
+          </div>
+          <div>
+            ${isUnlocked ? '<span class="text-neonGreen font-bold"><i class="fa-solid fa-circle-check"></i> Unlocked</span>' : '<span class="text-slate-500 font-medium"><i class="fa-solid fa-lock"></i> Locked</span>'}
+          </div>
+        `;
+        milestonesList.appendChild(item);
+      });
+
+      modal.classList.remove('hidden');
+    }
+
+    /* ==========================================================================
+       TAB SWITCHING ENGINE
+       ========================================================================== */
+    function switchTab(tab) {
+      activeTab = tab;
+      const tabs = ['Active', 'Daily', 'Log', 'Timer'];
+      
+      tabs.forEach(t => {
+        const btn = document.getElementById(`tab${t}`);
+        if (t.toUpperCase() === tab) {
+          btn.className = "flex-1 sm:flex-none px-4 py-2 rounded-lg text-xs font-bold transition-all bg-neonPurple text-white shadow-glow-purple";
+        } else {
+          btn.className = "flex-1 sm:flex-none px-4 py-2 rounded-lg text-xs font-bold transition-all text-slate-400 hover:text-slate-200";
+        }
+      });
+
+      if (tab === 'TIMER') {
+        document.getElementById('questList').classList.add('hidden');
+        document.getElementById('timerContainer').classList.remove('hidden');
+      } else {
+        document.getElementById('questList').classList.remove('hidden');
+        document.getElementById('timerContainer').classList.add('hidden');
+        renderQuestList();
+      }
+    }
+
+    /* ==========================================================================
+       DUNGEON RUN FOCUS SPRINT TIMER
+       ========================================================================== */
+    let timerInterval = null;
+    let timerTimeLeft = 25 * 60;
+
+    function formatTimer(sec) {
+      const m = Math.floor(sec / 60).toString().padStart(2, '0');
+      const s = (sec % 60).toString().padStart(2, '0');
+      return `${m}:${s}`;
+    }
+
+    function startTimer() {
+      if (timerInterval) return;
+      document.getElementById('startTimerBtn').classList.add('hidden');
+      document.getElementById('pauseTimerBtn').classList.remove('hidden');
+
+      timerInterval = setInterval(() => {
+        timerTimeLeft--;
+        document.getElementById('timerDisplay').textContent = formatTimer(timerTimeLeft);
+
+        if (timerTimeLeft <= 0) {
+          clearInterval(timerInterval);
+          timerInterval = null;
+          timerTimeLeft = 25 * 60;
+          document.getElementById('timerDisplay').textContent = formatTimer(timerTimeLeft);
+          document.getElementById('startTimerBtn').classList.remove('hidden');
+          document.getElementById('pauseTimerBtn').classList.add('hidden');
+
+          awardStatXp('DIS', 100, null);
+          alert('⚔️ DUNGEON CLEARED! You stayed focused and earned +100 DIS Bonus XP!');
+        }
+      }, 1000);
+    }
+
+    function pauseTimer() {
+      clearInterval(timerInterval);
+      timerInterval = null;
+      document.getElementById('startTimerBtn').classList.remove('hidden');
+      document.getElementById('pauseTimerBtn').classList.add('hidden');
+    }
+
+    function resetTimer() {
+      pauseTimer();
+      timerTimeLeft = 25 * 60;
+      document.getElementById('timerDisplay').textContent = formatTimer(timerTimeLeft);
+    }
+
+    /* ==========================================================================
+       EVENT BINDINGS & INIT
+       ========================================================================== */
+    document.addEventListener('DOMContentLoaded', () => {
+      renderApp();
+
+      // Name editing
+      document.getElementById('editNameBtn').addEventListener('click', () => {
+        const name = prompt("Enter your Character Name:", gameState.playerName);
+        if (name && name.trim()) {
+          gameState.playerName = name.trim();
+          saveState();
+          renderApp();
+        }
+      });
+
+      // Data Reset
+      document.getElementById('resetDataBtn').addEventListener('click', () => {
+        if (confirm("Reset all level progress, stats, and quests? This cannot be undone.")) {
+          localStorage.removeItem('levelUpLife_v2_State');
+          gameState = JSON.parse(JSON.stringify(DEFAULT_STATE));
+          saveState();
+          renderApp();
+        }
+      });
+
+      // Custom Habit Editor events
+      document.getElementById('editHabitTarget').addEventListener('input', (e) => {
+        const key = document.getElementById('editHabitKey').value;
+        updateXpPreview(key, e.target.value);
+      });
+
+      document.getElementById('closeEditHabitModalBtn').addEventListener('click', () => {
+        document.getElementById('editHabitModal').classList.add('hidden');
+      });
+
+      document.getElementById('editHabitForm').addEventListener('submit', (e) => {
+        e.preventDefault();
+        const key = document.getElementById('editHabitKey').value;
+        const label = document.getElementById('editHabitLabel').value.trim();
+        const target = parseFloat(document.getElementById('editHabitTarget').value) || 1;
+        const unit = document.getElementById('editHabitUnit').value.trim();
+
+        if (!gameState.customHabits) gameState.customHabits = {};
+        gameState.customHabits[key] = { label, target, unit };
+
+        saveState();
+        renderApp();
+
+        document.getElementById('editHabitModal').classList.add('hidden');
+        sfx.playQuestComplete();
+      });
+
+      // Custom Quest Modal
+      document.getElementById('openNewQuestModalBtn').addEventListener('click', () => {
+        document.getElementById('newQuestModal').classList.remove('hidden');
+      });
+
+      document.getElementById('closeNewQuestModalBtn').addEventListener('click', () => {
+        document.getElementById('newQuestModal').classList.remove('hidden');
+      });
+
+      document.getElementById('newQuestForm').addEventListener('submit', (e) => {
+        e.preventDefault();
+        const title = document.getElementById('questTitleInput').value.trim();
+        const stat = document.getElementById('questStatInput').value;
+        const type = document.getElementById('questTypeInput').value;
+        const diff = document.getElementById('questDifficultyInput').value;
+
+        let xp = 35;
+        if (diff === 'EASY') xp = 15;
+        if (diff === 'HARD') xp = 75;
+        if (diff === 'EPIC') xp = 150;
+        if (diff === 'LEGENDARY') xp = 300;
+
+        gameState.quests.push({
+          id: Date.now().toString(),
+          title,
+          stat,
+          difficulty: diff,
+          xp,
+          type,
+          completed: false
+        });
+
+        saveState();
+        renderApp();
+
+        document.getElementById('questTitleInput').value = '';
+        document.getElementById('newQuestModal').classList.add('hidden');
+        sfx.playQuestComplete();
+      });
+
+      // Library Modal
+      document.getElementById('openLibraryBtn').addEventListener('click', () => {
+        renderLibraryGrid();
+        document.getElementById('libraryModal').classList.remove('hidden');
+      });
+
+      document.getElementById('closeLibraryModalBtn').addEventListener('click', () => {
+        document.getElementById('libraryModal').classList.add('hidden');
+      });
+
+      // Stat detail close
+      document.getElementById('closeStatDetailBtn').addEventListener('click', () => {
+        document.getElementById('statDetailModal').classList.add('hidden');
+      });
+    });
+  </script>
+</body>
+</html>
